@@ -45,7 +45,7 @@ class ThotApiClient:
             if response.status_code == 200:
                 return pd.DataFrame(response.json()["data"])
             else:
-                raise Exception("Invalid response code")
+                raise Exception(f"Invalid response code {response.status_code}")
         except Exception as e:
             print(e)
         return None
@@ -63,7 +63,7 @@ def convert_to_live_price(response: pd.DataFrame) -> LivePrice:
 def get_live_prices(thot_connector: ThotApiClient) -> List[LivePrice]:
     prices = []
     
-    today_date = pendulum.yesterday().at(9) # Today at 9AM
+    today_date = pendulum.today().at(9) # Today at 9AM
     year_date = pendulum.now().start_of("year")
     params = {
         "country": Country.FR.value,
@@ -74,19 +74,26 @@ def get_live_prices(thot_connector: ThotApiClient) -> List[LivePrice]:
         "period_start_time_from": year_date.to_iso8601_string(),
         "period_start_time_to": year_date.add(years=4).to_iso8601_string(),
     }
+    deliveries = [
+        {"granularity": "QUARTERLY", "delivery": f"Q01-{year_date.year}"},
+        {"granularity": "QUARTERLY", "delivery": f"Q02-{year_date.year}"},
+        {"granularity": "QUARTERLY", "delivery": f"Q03-{year_date.year}"},
+        {"granularity": "QUARTERLY", "delivery": f"Q04-{year_date.year}"},
+        {"granularity": "YEARLY", "delivery": f"Y-{year_date.add(years=1).year}"},
+        {"granularity": "YEARLY", "delivery": f"Y-{year_date.add(years=2).year}"},
+        {"granularity": "YEARLY", "delivery": f"Y-{year_date.add(years=3).year}"},
+    ]
 
-    prices.append(
-        convert_to_live_price(
-            thot_connector.get_live_price(LivePriceParams(
-                granularity="QUARTERLY",
-                delivery="Q04-2025",
-                **params
-            ))
-        )
-    )
+    for delivery in deliveries:
+        price = thot_connector.get_live_price(LivePriceParams(
+            granularity=delivery["granularity"],
+            delivery=delivery["delivery"],
+            **params
+        ))
+        if price is not None and not price.empty:
+            prices.append(convert_to_live_price(price))
     return prices
 
-    
 
 def main():
     config = load_configuration()
