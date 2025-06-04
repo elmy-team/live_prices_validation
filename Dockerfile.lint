@@ -1,0 +1,36 @@
+ARG PYTHON_VERSION=3.12
+
+FROM python:${PYTHON_VERSION}-slim AS base
+WORKDIR /app
+
+# Install Poetry
+FROM base AS base-poetry
+RUN pip install --no-cache-dir poetry
+COPY ./pyproject.toml /app/
+COPY ./poetry.lock /app/
+COPY ./live_prices_validation /app/live_prices_validation
+COPY ./tests /app/tests
+COPY ./README.md /app/
+COPY ./lpvcodeguard /app/
+
+# Build the package
+FROM base-poetry AS package-builder
+RUN poetry build --format wheel
+
+# Install dependencies using Poetry
+FROM base-poetry AS dependencies-installer
+RUN --mount=type=secret,id=poetry_auth_toml,target=/root/.config/pypoetry/auth.toml \
+    poetry config virtualenvs.in-project true && \
+    poetry install --with dev --no-root --no-interaction --no-ansi
+
+# Create a base image with the package installed
+FROM base-poetry AS base-lpv
+ENV PATH="/app/.venv/bin:${PATH}"
+COPY --from=dependencies-installer /app/.venv/ /app/.venv/
+COPY --from=package-builder /app/dist/*.whl /app/
+RUN pip install --no-cache-dir --no-deps ./*.whl
+
+# Final stage
+FROM base-lpv AS final
+RUN chmod +x /app/lpvcodeguard
+CMD ["sh", "-c", "./lpvcodeguard"]

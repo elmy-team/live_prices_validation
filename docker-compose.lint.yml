@@ -1,0 +1,5 @@
+services:
+  lpv-lint:
+    build:
+      context: .
+      dockerfile: ./Dockerfile.lint
