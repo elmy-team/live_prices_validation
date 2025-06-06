@@ -1,4 +1,20 @@
+from dataclasses import dataclass
 from enum import Enum
+from typing import Mapping, Optional, Sequence
+
+
+JsonObject = Mapping[str, "JsonObject | str | int | bool | None | JsonArray"]
+JsonArray = Sequence["JsonObject | str | int | bool | None"]
+Json = JsonArray | JsonObject
+
+
+@dataclass
+class LivePrice:
+    bid: float
+    ask: float
+    price: float
+    delivery: str
+    last: Optional[float] = float("nan")
 
 
 class Country(Enum):
