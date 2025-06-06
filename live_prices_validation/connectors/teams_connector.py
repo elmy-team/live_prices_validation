@@ -1,7 +1,7 @@
 from copy import deepcopy
 import logging
 from typing import List, cast
-from live_prices_validation.toto import JsonArray, JsonObject, LivePrice
+from live_prices_validation.my_types import JsonArray, JsonObject, LivePrice
 import requests
 import json
 

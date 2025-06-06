@@ -5,7 +5,7 @@ import pendulum
 import logging
 import pandas as pd
 
-from live_prices_validation.toto import Country, Commodity, LivePrice, Profile, Granularity
+from live_prices_validation.my_types import Country, Commodity, LivePrice, Profile, Granularity
 from live_prices_validation.config import load_configuration
 
 @dataclass

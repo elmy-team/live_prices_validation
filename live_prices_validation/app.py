@@ -1,5 +1,5 @@
-from live_prices_validation.teams_connector import TeamsApiClient
-from live_prices_validation.thot_connector import ThotApiClient
+from live_prices_validation.connectors.teams_connector import TeamsApiClient
+from live_prices_validation.connectors.thot_connector import ThotApiClient
 from live_prices_validation.config import load_configuration
 
 def main():
