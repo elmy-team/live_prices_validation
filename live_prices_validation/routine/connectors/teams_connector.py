@@ -33,12 +33,22 @@ class TeamsApiClient:
 
 
     @staticmethod
-    def _json_table_cell(
-        value: float,
+    def _json_table_cell_text(
+        value: str,
     ) -> JsonObject:
         return {
             "type": "TableCell",
             "items": [{"type": "TextBlock", "text": value}],
+        }
+    
+
+    @staticmethod
+    def _json_table_cell_input(
+        value: float,
+    ) -> JsonObject:
+        return {
+            "type": "TableCell",
+            "items": [{"type": "Input.Number", "value": value}],
         }
 
 
@@ -60,7 +70,7 @@ class TeamsApiClient:
         for i, header in enumerate(headers):
             json_table["columns"].append({"width": "auto"})
             json_table["rows"][header_row_index]["cells"].append(
-                self._json_table_cell(header)
+                self._json_table_cell_text(header)
             )
 
         # Add rows to the table
@@ -69,11 +79,11 @@ class TeamsApiClient:
             # We skip the header row
             json_table["rows"][live_price_index + 1]["cells"].extend(
                 [
-                    self._json_table_cell(live_price.delivery),
-                    self._json_table_cell(live_price.bid),
-                    self._json_table_cell(live_price.ask),
-                    self._json_table_cell(live_price.last),
-                    self._json_table_cell(live_price.price),
+                    self._json_table_cell_text(live_price.delivery),
+                    self._json_table_cell_input(live_price.bid),
+                    self._json_table_cell_input(live_price.ask),
+                    self._json_table_cell_input(live_price.last),
+                    self._json_table_cell_input(live_price.price),
                 ]
             )
         return json_table
