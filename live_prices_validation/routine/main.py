@@ -12,7 +12,11 @@ def main():
 
     # Send prices to Teams Power Automate and post prices in channel
     teams_connector = TeamsApiClient(config.TEAMS_POWER_AUTOMATE_WEBHOOK)
-    teams_connector.post_live_prices(prices)
+    result = teams_connector.post_live_prices(prices)
+    if result:
+        print("Routine succeeded")
+    else:
+        print("Routine failed")
 
 
 if __name__ == "__main__":

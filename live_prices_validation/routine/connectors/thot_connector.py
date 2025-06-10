@@ -74,7 +74,7 @@ class ThotApiClient:
             else:
                 raise Exception(f"Invalid response code {response.status_code}")
         except Exception as e:
-            print(e)
+            print("Error Thot: " + str(e))
         return None
 
 

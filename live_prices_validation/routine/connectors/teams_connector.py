@@ -24,12 +24,12 @@ class TeamsApiClient:
             )
             logging.info("Request status code: %s", response.status_code)
             if response.status_code == 200:
-                return response.json()["data"]
+                return True
             else:
                 raise Exception(f"Invalid response code {response.status_code}")
         except Exception as e:
             print(e)
-        return None
+        return False
 
 
     @staticmethod
@@ -44,11 +44,12 @@ class TeamsApiClient:
 
     @staticmethod
     def _json_table_cell_input(
+        id: str,
         value: float,
     ) -> JsonObject:
         return {
             "type": "TableCell",
-            "items": [{"type": "Input.Number", "value": value}],
+            "items": [{"type": "Input.Number", "id": id, "value": value}],
         }
 
 
@@ -80,10 +81,10 @@ class TeamsApiClient:
             json_table["rows"][live_price_index + 1]["cells"].extend(
                 [
                     self._json_table_cell_text(live_price.delivery),
-                    self._json_table_cell_input(live_price.bid),
-                    self._json_table_cell_input(live_price.ask),
-                    self._json_table_cell_input(live_price.last),
-                    self._json_table_cell_input(live_price.price),
+                    self._json_table_cell_input(f"{live_price.delivery}_bid", live_price.bid),
+                    self._json_table_cell_input(f"{live_price.delivery}_ask", live_price.ask),
+                    self._json_table_cell_input(f"{live_price.delivery}_last", live_price.last),
+                    self._json_table_cell_input(f"{live_price.delivery}_price", live_price.price),
                 ]
             )
         return json_table
