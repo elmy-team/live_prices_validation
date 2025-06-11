@@ -10,10 +10,10 @@ Json = JsonArray | JsonObject
 
 @dataclass
 class LivePrice:
-    bid: float
-    ask: float
-    price: float
     delivery: str
+    bid: Optional[float] = float("nan")
+    ask: Optional[float] = float("nan")
+    price: Optional[float] = float("nan")
     last: Optional[float] = float("nan")
 
 

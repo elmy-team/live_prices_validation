@@ -72,10 +72,11 @@ class ThotApiClient:
             if response.status_code == 200:
                 return pd.DataFrame(response.json()["data"])
             else:
+                print(response.text)
                 raise Exception(f"Invalid response code {response.status_code}")
         except Exception as e:
-            print("Error Thot: " + str(e))
-        return None
+            print("Error Thot: ", e)
+            return None
 
 
     @staticmethod

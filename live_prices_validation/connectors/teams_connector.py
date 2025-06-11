@@ -1,6 +1,7 @@
 from copy import deepcopy
 import logging
 from typing import List, cast
+from live_prices_validation.common_exception import TimedOut
 from live_prices_validation.common_types import JsonArray, JsonObject, LivePrice
 import requests
 import json
@@ -24,12 +25,29 @@ class TeamsApiClient:
             )
             logging.info("Request status code: %s", response.status_code)
             if response.status_code == 200:
-                return True
+                return self._convert_data_to_live_prices(response.json()["body"])
+            elif response.status_code == 408: 
+                raise TimedOut("Routine timed-out")
             else:
                 raise Exception(f"Invalid response code {response.status_code}")
         except Exception as e:
-            print(e)
-        return False
+            print("Error Teams: ", e)
+            return None
+
+
+    @staticmethod
+    def _convert_data_to_live_prices(data) -> List[LivePrice]:
+        prices: List[LivePrice] = []
+
+        for key, value in data.items():
+            delivery, price_type = key.split("_")[:2]
+            price_index = next((i for i, price in enumerate(prices) if price.delivery == delivery), None)
+            if price_index is None:
+                prices.append(LivePrice(delivery=delivery))
+                setattr(prices[-1], price_type, value)
+            else:
+                setattr(prices[price_index], price_type, value)
+        return prices
 
 
     @staticmethod
@@ -49,7 +67,11 @@ class TeamsApiClient:
     ) -> JsonObject:
         return {
             "type": "TableCell",
-            "items": [{"type": "Input.Number", "id": id, "value": value}],
+            "items": [{
+                "type": "Input.Number",
+                "id": id,
+                "value": value
+            }],
         }
 
 
@@ -69,7 +91,7 @@ class TeamsApiClient:
         headers = ["delivery", "bid", "ask", "lastp", "mid"]
         json_table["rows"].append(deepcopy(json_table_row))
         for i, header in enumerate(headers):
-            json_table["columns"].append({"width": "auto"})
+            json_table["columns"].append({"width": 1})
             json_table["rows"][header_row_index]["cells"].append(
                 self._json_table_cell_text(header)
             )
