@@ -26,8 +26,8 @@ class TeamsApiClient:
             logging.info("Request status code: %s", response.status_code)
             if response.status_code == 200:
                 return self._convert_data_to_live_prices(response.json()["body"])
-            elif response.status_code == 408: 
-                raise TimedOut("Routine timed-out")
+            elif response.status_code == 408:
+                raise TimedOut("Adaptive card timed-out")
             else:
                 raise Exception(f"Invalid response code {response.status_code}")
         except Exception as e:
@@ -39,6 +39,7 @@ class TeamsApiClient:
     def _convert_data_to_live_prices(data) -> List[LivePrice]:
         prices: List[LivePrice] = []
 
+        del data['adaptive_card_id'] # We don't need the adaptive card's Id
         for key, value in data.items():
             delivery, price_type = key.split("_")[:2]
             price_index = next((i for i, price in enumerate(prices) if price.delivery == delivery), None)
