@@ -1,0 +1,10 @@
+services:
+  gyp-lint:
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+      secrets:
+        - poetry_auth_toml
+secrets:
+  poetry_auth_toml:
+    file: "$DOCKER_SECRET_POETRY"
