@@ -1,4 +1,5 @@
 from typing import List, Optional
+from live_prices_validation.config import Config
 import requests
 from dataclasses import dataclass
 import pendulum
@@ -6,7 +7,6 @@ import logging
 import pandas as pd
 
 from live_prices_validation.common_types import Country, Commodity, LivePrice, Profile, Granularity
-from live_prices_validation.config import load_configuration
 
 @dataclass
 class LivePriceParams:
@@ -92,9 +92,7 @@ class ThotApiClient:
 
 # Used as a debug script
 def main():
-    config = load_configuration()
-
-    thot_connector = ThotApiClient(config.THOT_BASE_URL, config.THOT_API_KEY)
+    thot_connector = ThotApiClient(Config.THOT_BASE_URL, Config.THOT_API_KEY)
     prices = thot_connector.get_live_prices()
     print(prices)
 

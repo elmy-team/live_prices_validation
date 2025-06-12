@@ -1,3 +1,4 @@
+from live_prices_validation.config import Config
 from copy import deepcopy
 import logging
 from typing import List, cast
@@ -8,35 +9,37 @@ import json
 
 
 class TeamsApiClient:
-    def __init__(self, base_url: str):
-        self.base_url = base_url
+    def post_and_wait_live_prices(
+        self,
+        team_name: str,
+        channel_name: str,
+        live_prices: List[LivePrice]
+    ):
+        body_blocks = [self._json_table(True, live_prices)]
+        payload = self._create_adaptive_card(team_name, channel_name, body_blocks, "Live Price Validation")
 
-    def post_live_prices(self, live_prices: List[LivePrice]):
-        body_blocks = [self._json_table(live_prices)]
-
-        try:
-            payload = self._create_adaptive_card("Gyptis", "[DEV] Power Automate test", body_blocks, "Live Price Validation")
-            body = json.dumps(payload, separators=(",", ":"))
-            headers = {"Content-type": "application/json"}
-            response = requests.post(
-                url=self.base_url,
-                data=body,
-                headers=headers
-            )
-            logging.info("Request status code: %s", response.status_code)
-            if response.status_code == 200:
-                return self._convert_data_to_live_prices(response.json()["body"])
-            elif response.status_code == 408:
-                raise TimedOut("Adaptive card timed-out")
-            else:
-                raise Exception(f"Invalid response code {response.status_code}")
-        except Exception as e:
-            print("Error Teams: ", e)
-            return None
+        return self._post_message(
+            Config.TEAMS_WEBHOOK_POST_AND_WAIT,
+            payload
+        )
 
 
-    @staticmethod
-    def _convert_data_to_live_prices(data) -> List[LivePrice]:
+    def post_live_prices(
+            self,
+            team_name: str,
+            channel_name: str,
+            live_prices: List[LivePrice]
+        ):
+        body_blocks = [self._json_table(False, live_prices)]
+        payload = self._create_adaptive_card(team_name, channel_name, body_blocks, "Live Price Validation")
+
+        return self._post_message(
+            Config.TEAMS_WEBHOOK_POST,
+            payload
+        )
+    
+
+    def convert_data_to_live_prices(self, data) -> List[LivePrice]:
         prices: List[LivePrice] = []
 
         del data['adaptive_card_id'] # We don't need the adaptive card's Id
@@ -52,12 +55,37 @@ class TeamsApiClient:
 
 
     @staticmethod
+    def _post_message(webhook: str, payload):
+        try:
+            body = json.dumps(payload, separators=(",", ":"))
+            headers = {"Content-type": "application/json"}
+            response = requests.post(
+                url=webhook,
+                data=body,
+                headers=headers
+            )
+            logging.info("Request status code: %s", response.status_code)
+            if response.status_code == 200:
+                return response.json()
+            elif response.status_code == 408:
+                raise TimedOut("Adaptive card timed-out")
+            else:
+                raise Exception(f"Invalid response code {response.status_code}")
+        except Exception as e:
+            print("Error Teams: ", e)
+            return None
+
+
+    @staticmethod
     def _json_table_cell_text(
         value: str,
     ) -> JsonObject:
         return {
             "type": "TableCell",
-            "items": [{"type": "TextBlock", "text": value}],
+            "items": [{
+                "type": "TextBlock",
+                "text": value
+            }],
         }
     
 
@@ -78,6 +106,7 @@ class TeamsApiClient:
 
     def _json_table(
         self,
+        input_cells: bool,
         live_prices: List[LivePrice]
     ) -> JsonObject:
         json_table: JsonObject = {
@@ -108,6 +137,13 @@ class TeamsApiClient:
                     self._json_table_cell_input(f"{live_price.delivery}_ask", live_price.ask),
                     self._json_table_cell_input(f"{live_price.delivery}_last", live_price.last),
                     self._json_table_cell_input(f"{live_price.delivery}_price", live_price.price),
+                ] if input_cells else
+                [
+                    self._json_table_cell_text(live_price.delivery),
+                    self._json_table_cell_text(live_price.bid),
+                    self._json_table_cell_text(live_price.ask),
+                    self._json_table_cell_text(live_price.last),
+                    self._json_table_cell_text(live_price.price),
                 ]
             )
         return json_table

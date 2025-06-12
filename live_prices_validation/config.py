@@ -1,19 +1,14 @@
 import os
-from dataclasses import dataclass
 from dotenv import load_dotenv
 
 load_dotenv()
 
-@dataclass(frozen=True)
 class Config:
-    THOT_BASE_URL: str
-    THOT_API_KEY: str
-    TEAMS_POWER_AUTOMATE_WEBHOOK: str
-
-
-def load_configuration() -> Config:
-    return Config(
-        THOT_BASE_URL=os.getenv("THOT_BASE_URL"),  # type: ignore
-        THOT_API_KEY=os.getenv("THOT_API_KEY"),  # type: ignore
-        TEAMS_POWER_AUTOMATE_WEBHOOK=os.getenv("TEAMS_POWER_AUTOMATE_WEBHOOK"),  # type: ignore
-    )
+    THOT_BASE_URL = os.getenv("THOT_BASE_URL")
+    THOT_API_KEY = os.getenv("THOT_API_KEY")
+    TEAMS_WEBHOOK_POST = os.getenv("TEAMS_WEBHOOK_POST")
+    TEAMS_WEBHOOK_POST_AND_WAIT = os.getenv("TEAMS_WEBHOOK_POST_AND_WAIT")
+    TEAMS_TEAM_NAME_POST = os.getenv("TEAMS_TEAM_NAME_POST")
+    TEAMS_TEAM_NAME_POST_AND_WAIT = os.getenv("TEAMS_TEAM_NAME_POST_AND_WAIT")
+    TEAMS_CHANNEL_NAME_POST = os.getenv("TEAMS_CHANNEL_NAME_POST")
+    TEAMS_CHANNEL_NAME_POST_AND_WAIT = os.getenv("TEAMS_CHANNEL_NAME_POST_AND_WAIT")
