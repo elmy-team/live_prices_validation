@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 from enum import Enum
-from typing import Mapping, Optional, Sequence
+from typing import List, Mapping, Optional, Sequence
+
+from pendulum import DateTime
 
 
 JsonObject = Mapping[str, "JsonObject | str | int | bool | None | JsonArray"]
@@ -15,6 +17,12 @@ class LivePrice:
     ask: Optional[float] = float("nan")
     price: Optional[float] = float("nan")
     last: Optional[float] = float("nan")
+
+
+@dataclass
+class LivePrices:
+    timestamp: DateTime
+    prices: List[LivePrice]
 
 
 class Country(Enum):

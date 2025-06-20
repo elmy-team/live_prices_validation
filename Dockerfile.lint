@@ -32,5 +32,5 @@ RUN pip install --no-cache-dir --no-deps ./*.whl
 
 # Final stage
 FROM base-lpv AS final
-RUN chmod +x /app/lpvcodeguard
-CMD ["sh", "-c", "./lpvcodeguard"]
+RUN chmod +x /app/codeguard
+CMD ["sh", "-c", "./codeguard"]

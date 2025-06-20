@@ -1,57 +1,31 @@
+from live_prices_validation.common_utils import create_adaptive_card, create_prices_table
 from live_prices_validation.config import Config
-from copy import deepcopy
 import logging
-from typing import List, cast
-from live_prices_validation.common_exception import TimedOut
-from live_prices_validation.common_types import JsonArray, JsonObject, LivePrice
+from live_prices_validation.common_types import LivePrices
 import requests
 import json
 
 
 class TeamsApiClient:
-    def post_and_wait_live_prices(
-        self,
-        team_name: str,
-        channel_name: str,
-        live_prices: List[LivePrice]
-    ):
-        body_blocks = [self._json_table(True, live_prices)]
-        payload = self._create_adaptive_card(team_name, channel_name, body_blocks, "Live Price Validation")
-
-        return self._post_message(
-            Config.TEAMS_WEBHOOK_POST_AND_WAIT,
-            payload
-        )
-
-
     def post_live_prices(
             self,
             team_name: str,
             channel_name: str,
-            live_prices: List[LivePrice]
+            live_prices: LivePrices
         ):
-        body_blocks = [self._json_table(False, live_prices)]
-        payload = self._create_adaptive_card(team_name, channel_name, body_blocks, "Live Price Validation")
+        body_blocks = [create_prices_table(live_prices.prices, input_cells=False)]
+        message_title = f"Prices at {live_prices.timestamp.format('HH[h]mm')}"
+        payload = create_adaptive_card(
+            team_name=team_name,
+            channel_name=channel_name,
+            body_blocks=body_blocks,
+            issuer_name=message_title
+        )
 
         return self._post_message(
             Config.TEAMS_WEBHOOK_POST,
             payload
         )
-    
-
-    def convert_data_to_live_prices(self, data) -> List[LivePrice]:
-        prices: List[LivePrice] = []
-
-        del data['adaptive_card_id'] # We don't need the adaptive card's Id
-        for key, value in data.items():
-            delivery, price_type = key.split("_")[:2]
-            price_index = next((i for i, price in enumerate(prices) if price.delivery == delivery), None)
-            if price_index is None:
-                prices.append(LivePrice(delivery=delivery))
-                setattr(prices[-1], price_type, value)
-            else:
-                setattr(prices[price_index], price_type, value)
-        return prices
 
 
     @staticmethod
@@ -67,118 +41,8 @@ class TeamsApiClient:
             logging.info("Request status code: %s", response.status_code)
             if response.status_code == 200:
                 return response.json()
-            elif response.status_code == 408:
-                raise TimedOut("Adaptive card timed-out")
             else:
                 raise Exception(f"Invalid response code {response.status_code}")
         except Exception as e:
             print("Error Teams: ", e)
             return None
-
-
-    @staticmethod
-    def _json_table_cell_text(
-        value: str,
-    ) -> JsonObject:
-        return {
-            "type": "TableCell",
-            "items": [{
-                "type": "TextBlock",
-                "text": value
-            }],
-        }
-    
-
-    @staticmethod
-    def _json_table_cell_input(
-        id: str,
-        value: float,
-    ) -> JsonObject:
-        return {
-            "type": "TableCell",
-            "items": [{
-                "type": "Input.Number",
-                "id": id,
-                "value": value
-            }],
-        }
-
-
-    def _json_table(
-        self,
-        input_cells: bool,
-        live_prices: List[LivePrice]
-    ) -> JsonObject:
-        json_table: JsonObject = {
-            "type": "Table",
-            "columns": cast(JsonArray, []),
-            "rows": cast(JsonArray, []),
-        }
-        json_table_row: JsonObject = {"type": "TableRow", "cells": cast(JsonArray, [])}
-
-        # Add headers to the table
-        header_row_index = 0
-        headers = ["delivery", "bid", "ask", "lastp", "mid"]
-        json_table["rows"].append(deepcopy(json_table_row))
-        for i, header in enumerate(headers):
-            json_table["columns"].append({"width": 1})
-            json_table["rows"][header_row_index]["cells"].append(
-                self._json_table_cell_text(header)
-            )
-
-        # Add rows to the table
-        for live_price_index, live_price in enumerate(live_prices):
-            json_table["rows"].append(deepcopy(json_table_row))
-            # We skip the header row
-            json_table["rows"][live_price_index + 1]["cells"].extend(
-                [
-                    self._json_table_cell_text(live_price.delivery),
-                    self._json_table_cell_input(f"{live_price.delivery}_bid", live_price.bid),
-                    self._json_table_cell_input(f"{live_price.delivery}_ask", live_price.ask),
-                    self._json_table_cell_input(f"{live_price.delivery}_last", live_price.last),
-                    self._json_table_cell_input(f"{live_price.delivery}_price", live_price.price),
-                ] if input_cells else
-                [
-                    self._json_table_cell_text(live_price.delivery),
-                    self._json_table_cell_text(live_price.bid),
-                    self._json_table_cell_text(live_price.ask),
-                    self._json_table_cell_text(live_price.last),
-                    self._json_table_cell_text(live_price.price),
-                ]
-            )
-        return json_table
-
-
-    @staticmethod
-    def _create_adaptive_card(
-        team_name: str,
-        channel_name: str,
-        body_blocks: JsonArray,
-        issuer_name: str | None = None,
-    ) -> JsonObject:
-        attachment: JsonObject = {
-            "contentType": "application/vnd.microsoft.card.adaptive",
-            "contentUrl": None,
-            "content": {
-                "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
-                "type": "AdaptiveCard",
-                "version": "1.5",
-                "body": [
-                    {
-                        "type": "FactSet",
-                        "facts": [
-                            {"title": "team_name", "value": team_name},
-                            {"title": "channel_name", "value": channel_name},
-                            {"title": "issuer_name", "value": issuer_name} if issuer_name else None,
-                        ],
-                        "isVisible": False,
-                    },
-                    *body_blocks,
-                ],
-                "msteams": {"width": "Full"},
-            },
-        }
-        return {
-            "type": "message",
-            "attachments": [attachment],
-        }

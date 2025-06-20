@@ -6,7 +6,7 @@ import pendulum
 import logging
 import pandas as pd
 
-from live_prices_validation.common_types import Country, Commodity, LivePrice, Profile, Granularity
+from live_prices_validation.common_types import Country, Commodity, LivePrice, LivePrices, Profile, Granularity
 
 @dataclass
 class LivePriceParams:
@@ -25,19 +25,18 @@ class ThotApiClient:
         self.base_url = base_url
         self.api_key = api_key
 
-    def get_live_prices(self) -> List[LivePrice]:
-        prices = []
+    def get_live_prices(self) -> LivePrices:
+        prices: List[LivePrice] = []
         
-        today_date = pendulum.today().at(9) # Today at 9AM
         year_date = pendulum.now().start_of("year")
         params = {
             "country": Country.FR.value,
             "commodity": Commodity.POWER.value,
             "profile": Profile.BASELOAD.value,
-            "publication_time_from": today_date.to_iso8601_string(),
-            "publication_time_to": today_date.add(hours=1).to_iso8601_string(), # Today at 10AM
-            "period_start_time_from": year_date.to_iso8601_string(),
-            "period_start_time_to": year_date.add(years=4).to_iso8601_string(),
+            "publication_time_from": pendulum.today().at(9).to_iso8601_string(), # Today at 9AM
+            "publication_time_to": pendulum.now().to_iso8601_string(), # Now
+            "period_start_time_from": year_date.to_iso8601_string(), # Start of current year
+            "period_start_time_to": year_date.add(years=4).to_iso8601_string(), # Start of year+4
         }
         deliveries = [
             {"granularity": "QUARTERLY", "delivery": f"Q01-{year_date.year}"},
@@ -49,6 +48,7 @@ class ThotApiClient:
             {"granularity": "YEARLY", "delivery": f"Y-{year_date.add(years=3).year}"},
         ]
 
+        timestamp = None
         for delivery in deliveries:
             price = self.get_live_price(LivePriceParams(
                 granularity=delivery["granularity"],
@@ -56,8 +56,14 @@ class ThotApiClient:
                 **params
             ))
             if price is not None and not price.empty:
+                # We retrieve only the most recent price which is at the end of the dataframe
+                price = price.iloc[-1]
+
+                if timestamp is None:
+                    timestamp = pendulum.parse(price["publication_time"])
                 prices.append(self.convert_to_live_price(price))
-        return prices
+
+        return LivePrices(timestamp, prices)
 
 
     def get_live_price(self, params: LivePriceParams) -> Optional[pd.DataFrame]:
@@ -72,7 +78,6 @@ class ThotApiClient:
             if response.status_code == 200:
                 return pd.DataFrame(response.json()["data"])
             else:
-                print(response.text)
                 raise Exception(f"Invalid response code {response.status_code}")
         except Exception as e:
             print("Error Thot: ", e)
@@ -82,11 +87,11 @@ class ThotApiClient:
     @staticmethod
     def convert_to_live_price(response: pd.DataFrame) -> LivePrice:
         return LivePrice(
-            bid=float(response["bid"][0]),
-            ask=float(response["ask"][0]),
-            last=float("nan" if response["last"][0] is None else response["last"][0]),
-            price=float(response["price"][0]),
-            delivery=response["delivery"][0]
+            delivery=response["delivery"],
+            bid=float(response["bid"]),
+            ask=float(response["ask"]),
+            last=float("nan" if response["last"] is None else response["last"]),
+            price=float(response["price"])
         )
 
 
